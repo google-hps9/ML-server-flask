@@ -11,32 +11,36 @@ from tensorflow.keras.applications.imagenet_utils import decode_predictions
 from tensorflow.keras.applications.imagenet_utils import preprocess_input
 from tensorflow.keras.applications import EfficientNetB0
 from tensorflow.keras.models import load_model
+from flask_cors import CORS
 
 app = Flask(__name__)
+CORS(app)
 app.debug = True
 
 prediction_id = -1
 answer = -1
-classes = {-1:"default",0:"0_background",1:"1_trash",2:"2_paper"
-           ,3:"3_plastic",4:"4_metal",5:"5_electronic_invoice",6:"6_bubble_wrap"
-           ,7:"7_thin_plastic_bag",8:"8_fruit_mesh_bag",9:"9_thin_film_paper_cup"}
+classes = {-1: "default", 0: "0_background", 1: "1_trash", 2: "2_paper", 3: "3_plastic", 4: "4_metal",
+           5: "5_electronic_invoice", 6: "6_bubble_wrap", 7: "7_thin_plastic_bag", 8: "8_fruit_mesh_bag", 9: "9_thin_film_paper_cup"}
+
 
 predictions_queue = queue.Queue(maxsize=5)
+
 
 def predictions_verify(predictions=predictions_queue):
     if not predictions_queue.full():
         return False
-    
+
     first = predictions_queue.get()
     same_count = 1
     for i in range(4):
         if predictions_queue.queue[i] == first:
-            same_count+=1
+            same_count += 1
 
-    if same_count==5:
+    if same_count == 5:
         return True
 
     return False
+
 
 def Preprocess(img):
     img = np.frombuffer(img, dtype=np.uint8)
@@ -52,22 +56,42 @@ def Preprocess(img):
     # print('Input image shape:', x.shape)
     return x
 
+
 @app.route('/home')
 def home():
     timestamp = int(time.time())
     return render_template('home.html', timestamp=timestamp, prediction=classes[prediction_id], answer=classes[answer])
 
 
-@app.route('/answer',methods=['GET']) # with Frontend
+@app.route('/finish_place', methods=['GET'])  # with Frontend
+def finish_place():
+    # TODO: Send request to RPI and ask for answer
+
+    # Please follow the trash_classes name
+    trash_classes = {
+        1: "Trash",
+        2: "Paper",
+        3: "Plastic",
+        4: "Metal",
+        5: "ElectronicInvoice",
+        6: "BubbleWrap",
+        7: "ThinPlasticBag",
+        8: "FruitMeshBag",
+        9: "ThinFilmPaperCup",
+    }
+    return jsonify({'answer': trash_classes[1]})
+
+
+@app.route('/answer', methods=['GET'])  # with Frontend
 def get_answer():
     args = request.args
-    print("User select:",args.get("select")) # "right" or "left" 
+    print("User select:", args.get("select"))  # "right" or "left"
     ans_reported = classes[answer]
-    print("Answer:",ans_reported)
+    print("Answer:", ans_reported)
 
     correct = False
 
-    if args.get("select") == "right": # trash
+    if args.get("select") == "right":  # trash
         if ans_reported == "not yet":
             print("No answer yet")
         if ans_reported == "jji" or "ff":
@@ -77,7 +101,7 @@ def get_answer():
             correct = False
             print("Wrong")
 
-    elif args.get("select") == "left": # recycle
+    elif args.get("select") == "left":  # recycle
         if ans_reported == "not yet":
             print("No answer yet")
         if ans_reported == "jji" or "ff":
@@ -87,13 +111,25 @@ def get_answer():
             correct = False
             print("Wrong")
 
+    # Please follow the trash_classes name for `ans_reported`
+    trash_classes = {
+        1: "Trash",
+        2: "Paper",
+        3: "Plastic",
+        4: "Metal",
+        5: "ElectronicInvoice",
+        6: "BubbleWrap",
+        7: "ThinPlasticBag",
+        8: "FruitMeshBag",
+        9: "ThinFilmPaperCup",
+    }
 
-    return jsonify({'is_correct': correct,'answer': ans_reported})
+    return jsonify({'is_correct': correct, 'answer': ans_reported})
 
 
-@app.route('/predict',methods=['POST']) # with RPi
+@app.route('/predict', methods=['POST'])  # with RPi
 def process_image():
-    
+
     input_image = request.files['image'].read()
 
     start = datetime.datetime.now()
@@ -107,25 +143,23 @@ def process_image():
     print("\nPrediction: {}".format(classes[prediction_id]))
 
     predictions_queue.put(prediction_id)
-    if predictions_verify(predictions_queue):  # if last 5 predictions are the same      
+    if predictions_verify(predictions_queue):  # if last 5 predictions are the same
         global answer
         answer = prediction_id
-        print("Update answer:",classes[answer])
+        print("Update answer:", classes[answer])
 
     end = datetime.datetime.now()
     # print("Inference time: {} ms".format(int((end-start).microseconds/1000)))
-    
+
     return jsonify({'result': str(prediction_id)})
 
 
 if __name__ == '__main__':
-
-    # Load the TFLite model
-    tflite_model_path  = os.path.abspath(os.getcwd())+"\\EfficientNetB0_V6.tflite"
+    tflite_model_path = os.path.join(os.path.abspath(os.getcwd()), "EfficientNetB0_V6.tflite")
     TFLite_interpreter = lite.Interpreter(model_path=tflite_model_path)
     TFLite_interpreter.allocate_tensors()
     input_details = TFLite_interpreter.get_input_details()
     output_details = TFLite_interpreter.get_output_details()
     input_shape = input_details[0]['shape']
-    
+
     app.run(host='0.0.0.0')
