@@ -22,7 +22,7 @@ answer = -1
 classes = {-1: "default", 0: "0_background", 1: "1_trash", 2: "2_paper", 3: "3_plastic", 4: "4_metal",
            5: "5_electronic_invoice", 6: "6_bubble_wrap", 7: "7_thin_plastic_bag", 8: "8_fruit_mesh_bag", 9: "9_thin_film_paper_cup"}
 
-
+rpi_ip = "http://192.168.0.130:5555"
 
 def predictions_verify(predictions):
     if not predictions.full():
@@ -84,17 +84,21 @@ def home():
 @app.route('/finish_place', methods=['GET'])  # with Frontend
 def finish_place():
 
-    rpi_server_url = "http://192.168.0.168:5555/captured_image"
+    rpi_server_url = rpi_ip + "/captured_image"
     global answer
+    start = datetime.datetime.now()
     answer = get_rpi_result(rpi_server_url)
     print("Update answer:", classes[answer])
+    end = datetime.datetime.now()
+    print("Inference time: ",(end-start))
     
     # TODO: special case check
     if classes[answer] == "9_thin_film_paper_cup":
         print("\nspecial case: 9_thin_film_paper_cup\n")
         data = {'text_data': 'T'}
-        rpi_server_url = "http://192.168.0.168:5555/arduino_signal"
+        rpi_server_url = rpi_ip + "/arduino_signal"
         response = requests.post(rpi_server_url, data=data)
+        print("Rpi response: ",response.json()['done'])
 
     trash_classes = {
         1: "Trash",
@@ -152,8 +156,9 @@ def get_answer():
     else:
         data = {'text_data': 'L'}
 
-    rpi_server_url = "http://192.168.0.168:5555/arduino_signal"
+    rpi_server_url = rpi_ip + "/arduino_signal"
     response = requests.post(rpi_server_url, data=data)
+    print("Rpi response: ",response.json()['done'])
 
     return jsonify({'is_correct': correct, 'answer': trash_classes[answer]})
 
@@ -174,8 +179,8 @@ def get_rpi_result(rpi_server_url):
                 bytes_data += chunk
             image = cv2.imdecode(np.frombuffer(bytes_data, dtype=np.uint8), cv2.IMREAD_COLOR)
             cv2.imshow('Received Image', image)
-            print(type(image))
-            print(image.shape)
+            # print(type(image))
+            # print(image.shape)
             # time.sleep(1)
 
             if image is None:
