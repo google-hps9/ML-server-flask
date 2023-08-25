@@ -22,7 +22,7 @@ answer = -1
 classes = {-1: "default", 0: "0_background", 1: "1_trash", 2: "2_paper", 3: "3_plastic", 4: "4_metal",
            5: "5_electronic_invoice", 6: "6_bubble_wrap", 7: "7_thin_plastic_bag", 8: "8_fruit_mesh_bag", 9: "9_thin_film_paper_cup"}
 
-rpi_ip = "http://192.168.0.130:5555"
+rpi_ip = "http://192.168.0.153:5555"
 
 def predictions_verify(predictions):
     if not predictions.full():
