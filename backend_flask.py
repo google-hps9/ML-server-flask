@@ -98,7 +98,7 @@ def finish_place():
         data = {'text_data': 'T'}
         rpi_server_url = rpi_ip + "/arduino_signal"
         response = requests.post(rpi_server_url, data=data)
-        print("Rpi response: ",response.json()['done'])
+        print("Rpi response: ",response.content)
 
     trash_classes = {
         1: "Trash",
@@ -158,7 +158,7 @@ def get_answer():
 
     rpi_server_url = rpi_ip + "/arduino_signal"
     response = requests.post(rpi_server_url, data=data)
-    print("Rpi response: ",response.json()['done'])
+    print("Rpi response: ",response.content)
 
     return jsonify({'is_correct': correct, 'answer': trash_classes[answer]})
 
