@@ -13,6 +13,7 @@ from tensorflow.keras.applications import EfficientNetB0
 from tensorflow.keras.models import load_model
 from flask_cors import CORS
 import requests
+from preprocess import preprocess_image # TODO: adjust params
 
 app = Flask(__name__)
 CORS(app)
@@ -38,41 +39,6 @@ def predictions_verify(predictions):
         return True
 
     return False
-
-def preprocess_image(raw_image, corners= np.array([[5, 538], [100, 120], [800, 120], [950, 538]], dtype=np.float32), size= 224):
-    
-    # TODO: adjust parameters
-    raw_image = cv2.resize(raw_image,(960,540))
-
-    target_corners = np.array([[0, 0], [size - 1, 0], [size - 1, size - 1], [0, size - 1]], dtype=np.float32)    
-    matrix = cv2.getPerspectiveTransform(corners, target_corners)
-    img = cv2.warpPerspective(raw_image, matrix, (size, size))
-    
-    img = cv2.rotate(img, cv2.ROTATE_90_COUNTERCLOCKWISE)
-    img = cv2.resize(img, (size, size))
-
-    current_dir = os.path.dirname(os.path.abspath(__file__))
-    upload_path = os.path.join(current_dir, 'static', 'uploads', "latest.jpg")
-    cv2.imwrite(upload_path, img, [cv2.IMWRITE_JPEG_QUALITY, 95])
-
-    x = np.expand_dims(img, axis=0)
-    x = preprocess_input(x)
-    # print('Input image shape:', x.shape)
-    return x
-    
-
-# def Preprocess(img):
-    
-#     img = cv2.resize(img, (224, 224))
-
-#     current_dir = os.path.dirname(os.path.abspath(__file__))
-#     upload_path = os.path.join(current_dir, 'static', 'uploads', "latest.jpg")
-
-#     cv2.imwrite(upload_path, img, [cv2.IMWRITE_JPEG_QUALITY, 95])
-#     x = np.expand_dims(img, axis=0)
-#     x = preprocess_input(x)
-#     # print('Input image shape:', x.shape)
-#     return x
 
 
 @app.route('/home')
