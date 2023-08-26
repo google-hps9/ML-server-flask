@@ -12,18 +12,26 @@ from tensorflow.keras.applications.imagenet_utils import preprocess_input
 from tensorflow.keras.applications import EfficientNetB0
 from tensorflow.keras.models import load_model
 from flask_cors import CORS
-import requests
-from preprocess import preprocess_image # TODO: adjust params
+import requests 
+# from preprocess import preprocess_image # TODO: adjust params
 
 app = Flask(__name__)
 CORS(app)
 app.debug = True
 
+# TODO: revise EfficientNet model
+tflite_model_path = os.path.join(os.path.abspath(os.getcwd()), "EfficientNetB0_V6.tflite")
+TFLite_interpreter = lite.Interpreter(model_path=tflite_model_path)
+TFLite_interpreter.allocate_tensors()
+input_details = TFLite_interpreter.get_input_details()
+output_details = TFLite_interpreter.get_output_details()
+input_shape = input_details[0]['shape']
+
 answer = -1
 classes = {-1: "default", 0: "0_background", 1: "1_trash", 2: "2_paper", 3: "3_plastic", 4: "4_metal",
            5: "5_electronic_invoice", 6: "6_bubble_wrap", 7: "7_thin_plastic_bag", 8: "8_fruit_mesh_bag", 9: "9_thin_film_paper_cup"}
 
-rpi_ip = "http://192.168.0.153:5555"
+rpi_ip = "http://192.168.0.168:5555"
 
 def predictions_verify(predictions):
     if not predictions.full():
@@ -64,7 +72,7 @@ def finish_place():
         data = {'text_data': 'T'}
         rpi_server_url = rpi_ip + "/arduino_signal"
         response = requests.post(rpi_server_url, data=data)
-        print("Rpi response: ",response.content)
+        # print("Rpi response: ",response.content)
 
     trash_classes = {
         1: "Trash",
@@ -117,17 +125,31 @@ def get_answer():
 
 
     # send signal to Rpi to drive the motor
-    if answer == 2 or answer == 3 or answer == 4 or answer == 8 or answer == 7:
-        data = {'text_data': 'R'}
-    else:
-        data = {'text_data': 'L'}
+    if not answer == 0: # user has placed trash on platform
+        if answer == 2 or answer == 3 or answer == 4 or answer == 8 or answer == 7:
+            data = {'text_data': 'R'}
+        else:
+            data = {'text_data': 'L'}
 
-    rpi_server_url = rpi_ip + "/arduino_signal"
-    response = requests.post(rpi_server_url, data=data)
-    print("Rpi response: ",response.content)
+        rpi_server_url = rpi_ip + "/arduino_signal"
+        response = requests.post(rpi_server_url, data=data)
+        # print("Rpi response: ",response.content)
 
     return jsonify({'is_correct': correct, 'answer': trash_classes[answer]})
 
+@app.route('/timeout', methods=['GET'])  # with Frontend
+def time_out():
+    if not answer == 0: # trash has been placed on platform
+        if answer == 2 or answer == 3 or answer == 4 or answer == 8 or answer == 7:
+            data = {'text_data': 'R'}
+        else:
+            data = {'text_data': 'L'}
+
+        rpi_server_url = rpi_ip + "/arduino_signal"
+        response = requests.post(rpi_server_url, data=data)
+        print("Rpi response: ",response.content)
+    
+    return "timeout received", 200
 
 def get_rpi_result(rpi_server_url):
 
@@ -163,10 +185,34 @@ def get_rpi_result(rpi_server_url):
     
     return prediction_id
 
+
+
+def preprocess_image(raw_image, corners= np.array([[5, 538], [100, 120], [800, 120], [950, 538]], dtype=np.float32), size= 224):
+    
+    # TODO: adjust parameters
+    raw_image = cv2.resize(raw_image,(960,540))
+
+    target_corners = np.array([[0, 0], [size - 1, 0], [size - 1, size - 1], [0, size - 1]], dtype=np.float32)    
+    matrix = cv2.getPerspectiveTransform(corners, target_corners)
+    img = cv2.warpPerspective(raw_image, matrix, (size, size))
+    
+    img = cv2.rotate(img, cv2.ROTATE_90_COUNTERCLOCKWISE)
+    img = cv2.resize(img, (size, size))
+
+    current_dir = os.path.dirname(os.path.abspath(__file__))
+    upload_path = os.path.join(current_dir, 'static', 'uploads', "latest.jpg")
+    cv2.imwrite(upload_path, img, [cv2.IMWRITE_JPEG_QUALITY, 95])
+
+    x = np.expand_dims(img, axis=0)
+    x = preprocess_input(x)
+    # print('Input image shape:', x.shape)
+    return x
+
 def predict_class(input_image):
 
-    input_data = preprocess_image(input_image)
-    TFLite_interpreter.set_tensor(input_details[0]['index'], input_data)
+    input_image = preprocess_image(input_image)
+
+    TFLite_interpreter.set_tensor(input_details[0]['index'], input_image)
     TFLite_interpreter.invoke()
     output_data = TFLite_interpreter.get_tensor(output_details[0]['index'])
 
@@ -178,14 +224,6 @@ def predict_class(input_image):
 
 
 if __name__ == '__main__':
-
-    # TODO: revise EfficientNet model
-    tflite_model_path = os.path.join(os.path.abspath(os.getcwd()), "EfficientNetB0_V6.tflite")
-    TFLite_interpreter = lite.Interpreter(model_path=tflite_model_path)
-    TFLite_interpreter.allocate_tensors()
-    input_details = TFLite_interpreter.get_input_details()
-    output_details = TFLite_interpreter.get_output_details()
-    input_shape = input_details[0]['shape']
 
     app.run(host='0.0.0.0')
 

@@ -1,5 +1,7 @@
 import cv2
 import numpy as np
+from tensorflow.keras.applications.imagenet_utils import preprocess_input
+
 
 def preprocess_image(raw_image, corners= np.array([[5, 538], [100, 120], [800, 120], [950, 538]], dtype=np.float32), size= 224):
     
@@ -12,6 +14,9 @@ def preprocess_image(raw_image, corners= np.array([[5, 538], [100, 120], [800, 1
     img = cv2.rotate(img, cv2.ROTATE_90_COUNTERCLOCKWISE)
     img = cv2.resize(img, (size, size))
     
+    img = np.expand_dims(img, axis=0)
+    img = preprocess_input(img)
+
     return img
 
 def show_region(raw_image, corners= np.array([[5, 538], [100, 120], [800, 120], [950, 538]], dtype=np.float32), size= 224):
