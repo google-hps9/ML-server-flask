@@ -235,6 +235,7 @@ def predict_class(input_image):
 
 
 if __name__ == '__main__':
-    img = cv2.imread("C:\\Users\\ASUS\\Desktop\\HPS\\Dataset\\Dataset_Custom\\Preprocessed_Data_II\\2_paper\\00035.png")
-    print(predict_class(img))
+    # test image classification functionality
+    # img = cv2.imread("C:\\Users\\ASUS\\Desktop\\HPS\\Dataset\\Dataset_Custom\\Preprocessed_Data_II\\2_paper\\00035.png")
+    # print(predict_class(img))
     app.run(host='0.0.0.0')
