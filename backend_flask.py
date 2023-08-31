@@ -14,7 +14,6 @@ from tensorflow.keras.models import load_model
 from flask_cors import CORS
 import requests
 from threading import Thread
-# from preprocess import preprocess_image # TODO: adjust params
 
 app = Flask(__name__)
 CORS(app)
@@ -22,8 +21,7 @@ app.debug = True
 
 MOCK_MODE = True
 
-# TODO: revise EfficientNet model
-tflite_model_path = os.path.join(os.path.abspath(os.getcwd()), "EfficientNetB0_V8.tflite")
+tflite_model_path = os.path.join(os.path.abspath(os.getcwd()), "EfficientNetB0_V9.tflite")
 TFLite_interpreter = lite.Interpreter(model_path=tflite_model_path)
 TFLite_interpreter.allocate_tensors()
 input_details = TFLite_interpreter.get_input_details()
@@ -74,7 +72,6 @@ def finish_place():
         print("Mock mode")
         answer = int(input("Correct Answer: "))
 
-    # TODO: special case check
     if classes[answer] == "9_thin_film_paper_cup":
         print("\nspecial case: 9_thin_film_paper_cup\n")
         thread = Thread(target=send_signal_to_rpi, args=(answer,))
@@ -198,14 +195,12 @@ def get_rpi_result(rpi_server_url):
 
 def preprocess_image(raw_image, corners=np.array([[5, 538], [100, 120], [800, 120], [950, 538]], dtype=np.float32), size=224):
 
-    # TODO: adjust parameters
     raw_image = cv2.resize(raw_image, (960, 540))
 
     target_corners = np.array([[0, 0], [size - 1, 0], [size - 1, size - 1], [0, size - 1]], dtype=np.float32)
     matrix = cv2.getPerspectiveTransform(corners, target_corners)
     img = cv2.warpPerspective(raw_image, matrix, (size, size))
 
-    # TODO: whether to rotate
     img = cv2.rotate(img, cv2.ROTATE_90_COUNTERCLOCKWISE)
     img = cv2.resize(img, (size, size))
 
