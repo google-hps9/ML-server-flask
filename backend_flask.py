@@ -19,7 +19,7 @@ app = Flask(__name__)
 CORS(app)
 app.debug = True
 
-MOCK_MODE = True
+MOCK_MODE = False
 
 tflite_model_path = os.path.join(os.path.abspath(os.getcwd()), "EfficientNetB0_V9.tflite")
 TFLite_interpreter = lite.Interpreter(model_path=tflite_model_path)
@@ -32,7 +32,7 @@ answer = -1
 classes = {-1: "default", 0: "0_background", 1: "1_trash", 2: "2_paper", 3: "3_plastic", 4: "4_metal",
            5: "5_electronic_invoice", 6: "6_bubble_wrap", 7: "7_thin_plastic_bag", 8: "8_fruit_mesh_bag", 9: "9_thin_film_paper_cup"}
 
-rpi_ip = "http://192.168.0.168:5555"
+rpi_ip = "http://192.168.0.153:5555"
 
 
 def predictions_verify(predictions):
@@ -46,9 +46,13 @@ def predictions_verify(predictions):
             same_count += 1
 
     if same_count == 3:
-        return True
+        if first == 0:
+            return False
+        else:
+            return True
 
     return False
+
 
 
 @app.route('/home')
@@ -85,6 +89,8 @@ def finish_place():
 
 
 trash_classes = {
+    -1: "NotYetDetected",
+    0: "Background",
     1: "Trash",
     2: "Paper",
     3: "Plastic",
