@@ -19,7 +19,7 @@ app = Flask(__name__)
 CORS(app)
 app.debug = True
 
-MOCK_MODE = False
+MOCK_MODE = True
 
 tflite_model_path = os.path.join(os.path.abspath(os.getcwd()), "EfficientNetB0_V9.tflite")
 TFLite_interpreter = lite.Interpreter(model_path=tflite_model_path)
@@ -42,6 +42,7 @@ def predictions_verify(predictions):
     first = predictions.get()
     same_count = 1
     for i in range(2):
+
         if predictions.queue[i] == first:
             same_count += 1
 
